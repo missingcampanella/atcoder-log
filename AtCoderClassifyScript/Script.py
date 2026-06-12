@@ -12,14 +12,9 @@ def fetch_difficulty_data():
         print(f"取得失敗: {e}")
         return None
 
-def get_problem_ids(directory: str) -> list[str]:
+def get_problem_files(directory: str) -> list[Path]:
     dir_path = Path(directory)
-    problem_ids = []
-    for file in dir_path.iterdir():
-        if file.is_file():
-            problem_id = file.stem
-            problem_ids.append(problem_id)
-    return problem_ids
+    return [file for file in dir_path.iterdir() if file.is_file()]
 
 def get_color_folder(difficulty) -> str:
     if difficulty is None:
@@ -61,22 +56,22 @@ def main(source_dir: str, dest_base_dir: str):
         print("データが取得できませんでした")
         return
 
-    problem_ids = get_problem_ids(source_dir)
+    files = get_problem_files(source_dir)
 
-    for problem_id in problem_ids:
+    for file in files:
+        problem_id = file.stem
         normalized_id = normalize_problem_id(problem_id, data)
         info = data.get(normalized_id)
         difficulty = info.get("difficulty") if info else None
         folder_name = get_color_folder(difficulty)
 
-        src_path = Path(source_dir) / f"{problem_id}.py"
         dest_dir = Path(dest_base_dir) / folder_name
         dest_dir.mkdir(parents=True, exist_ok=True)
-        dest_path = dest_dir / f"{problem_id}.py"
+        dest_path = dest_dir / file.name
 
-        if src_path.exists() and src_path != dest_path:
-            shutil.move(str(src_path), str(dest_path))
-            print(f"移動完了: {problem_id} -> {folder_name}")
+        if file.exists() and file != dest_path:
+            shutil.move(str(file), str(dest_path))
+            print(f"移動完了: {file.name} -> {folder_name}")
 
 if __name__ == "__main__":
     main(
