@@ -1,4 +1,6 @@
 import requests
+import shutil
+from pathlib import Path
 
 def fetch_difficulty_data():
     url = "https://kenkoooo.com/atcoder/resources/problem-models.json"
@@ -10,17 +12,13 @@ def fetch_difficulty_data():
         print(f"取得失敗: {e}")
         return None
 
-from pathlib import Path
-
 def get_problem_ids(directory: str) -> list[str]:
     dir_path = Path(directory)
     problem_ids = []
-    
     for file in dir_path.iterdir():
         if file.is_file():
             problem_id = file.stem
             problem_ids.append(problem_id)
-    
     return problem_ids
 
 def get_color_folder(difficulty) -> str:
@@ -42,3 +40,46 @@ def get_color_folder(difficulty) -> str:
         return "orange"
     else:
         return "red"
+
+def normalize_problem_id(problem_id: str, data: dict) -> str:
+    if problem_id in data:
+        return problem_id
+    
+    mapping = {"a": "1", "b": "2", "c": "3", "d": "4"}
+    parts = problem_id.split("_")
+    
+    if len(parts) == 2 and parts[1] in mapping:
+        converted = parts[0] + "_" + mapping[parts[1]]
+        if converted in data:
+            return converted
+    
+    return problem_id
+
+def main(source_dir: str, dest_base_dir: str):
+    data = fetch_difficulty_data()
+    if data is None:
+        print("データが取得できませんでした")
+        return
+
+    problem_ids = get_problem_ids(source_dir)
+
+    for problem_id in problem_ids:
+        normalized_id = normalize_problem_id(problem_id, data)
+        info = data.get(normalized_id)
+        difficulty = info.get("difficulty") if info else None
+        folder_name = get_color_folder(difficulty)
+
+        src_path = Path(source_dir) / f"{problem_id}.py"
+        dest_dir = Path(dest_base_dir) / folder_name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / f"{problem_id}.py"
+
+        if src_path.exists() and src_path != dest_path:
+            shutil.move(str(src_path), str(dest_path))
+            print(f"移動完了: {problem_id} -> {folder_name}")
+
+if __name__ == "__main__":
+    main(
+        source_dir="./atcoder-sorter",
+        dest_base_dir="./difficulty"
+    )
